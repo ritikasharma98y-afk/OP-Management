@@ -133,15 +133,24 @@ if not os.path.exists(current_file) or not os.path.exists(absent_file):
     st.error("Missing CSV files! Run generator scripts first.")
     st.stop()
 
-current_df = pd.read_csv(current_file)
-current_df['ID'] = current_df['ID'].astype(str).str.strip()
-current_df = current_df[current_df['Area'].isin(['CG', 'Offline', 'Assy', 'Testing', 'Packout'])]
+# Read ID columns as strings to prevent float issues
+id_columns = ['ID', 'Multi_OP1_ID', 'Multi_OP2_ID', 'Multi_OP3_ID']
+dtype_dict = {col: str for col in id_columns}
 
-absent_df = pd.read_csv(absent_file)
-absent_df['ID'] = absent_df['ID'].astype(str).str.strip()
+current_df = pd.read_csv(current_file, dtype=dtype_dict)
+absent_df = pd.read_csv(absent_file, dtype=dtype_dict)
+
+# Clean IDs: remove any trailing .0, .00, etc. and 'nan'
+for col in id_columns:
+    if col in current_df.columns:
+        current_df[col] = current_df[col].str.strip().str.replace(r'\.0+$', '', regex=True).replace({'nan': '', 'NaN': ''})
+    if col in absent_df.columns:
+        absent_df[col] = absent_df[col].str.strip().str.replace(r'\.0+$', '', regex=True).replace({'nan': '', 'NaN': ''})
+
+current_df = current_df[current_df['Area'].isin(['CG', 'Offline', 'Assy', 'Testing', 'Packout'])]
 absent_df = absent_df[absent_df['Area'].isin(['CG', 'Offline', 'Assy', 'Testing', 'Packout'])]
 
-total = len(current_df[current_df['ID'] != 'nan'])
+total = len(current_df[current_df['ID'] != ''])
 absent_count = len(absent_df)
 present_count = total - absent_count
 
@@ -152,7 +161,7 @@ stages = ['CG', 'Offline', 'Assy', 'Testing', 'Packout']
 stage_data = []
 
 for stage in stages:
-    total_in_stage = len(current_df[(current_df['Area'] == stage) & (current_df['ID'] != 'nan')])
+    total_in_stage = len(current_df[(current_df['Area'] == stage) & (current_df['ID'] != '')])
     absent_in_stage_df = absent_df[absent_df['Area'] == stage]
     absent_in_stage = len(absent_in_stage_df)
     present_in_stage = total_in_stage - absent_in_stage
@@ -190,7 +199,7 @@ attrition_df = pd.DataFrame(attrition_data)
 
 # Header
 st.markdown("<h1>👷 OP Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<div class='date-header'>📅 Dec 31, 2025 | CG • Offline • Assy • Testing • Packout</div>", unsafe_allow_html=True)
+st.markdown("<div class='date-header'>📅 January 06, 2026 | CG • Offline • Assy • Testing • Packout</div>", unsafe_allow_html=True)
 
 left_col, right_col = st.columns([1, 3], gap="small")
 
@@ -203,14 +212,14 @@ with left_col:
     st.markdown("<div class='kpi-card'>", unsafe_allow_html=True)
     st.markdown("<div class='kpi-label'>PRESENT</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='kpi-value' style='color:#43A047;'>{present_count}</div>", unsafe_allow_html=True)
-    present_pct_display = round(present_count/total*100, 1)
+    present_pct_display = round(present_count/total*100, 1) if total > 0 else 0
     st.markdown(f"<div class='kpi-change' style='background-color:#E8F5E9; color:#2E7D32;'>↑{present_pct_display}%</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
    
     st.markdown("<div class='kpi-card'>", unsafe_allow_html=True)
     st.markdown("<div class='kpi-label'>ABSENT</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='kpi-value' style='color:#E53935;'>{absent_count}</div>", unsafe_allow_html=True)
-    absent_pct_display = round(absent_count/total*100, 1)
+    absent_pct_display = round(absent_count/total*100, 1) if total > 0 else 0
     st.markdown(f"<div class='kpi-change' style='background-color:#FFEBEE; color:#C62828;'>↓{absent_pct_display}%</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
    
@@ -339,47 +348,64 @@ with right_col:
         st.dataframe(styled_attr, use_container_width=True, hide_index=True, height=140)
     st.markdown("</div>", unsafe_allow_html=True)
    
-    # Absent Operators
+    # Absent Operators - FINAL VERSION: Clean IDs, correct columns
     st.markdown("<div class='section-card'>", unsafe_allow_html=True)
     if absent_count > 0:
         st.markdown(f"### 🚨 Absent Operators ({absent_count})")
         display_df = absent_df.copy()
-        def check_backup_status(row):
-            return 'Available' if any(pd.notna(row[col]) and str(row[col]).strip() != '' 
-                                    for col in ['Multi_OP1_Name', 'Multi_OP2_Name', 'Multi_OP3_Name']) else 'Not Available'
-        display_df['Backup Status'] = display_df.apply(check_backup_status, axis=1)
+        
+        # Rename backup columns
         display_df = display_df.rename(columns={
-            "Area": "Area", "Station": "Station", "Name": "Name", "ID": "ID",
-            "Multi_OP1_Name": "B1 Name", "Multi_OP1_ID": "B1 ID",
-            "Multi_OP2_Name": "B2 Name", "Multi_OP2_ID": "B2 ID",
-            "Multi_OP3_Name": "B3 Name", "Multi_OP3_ID": "B3 ID",
-            "Backup Status": "Backup Status"
+            "Area": "Area",
+            "Station": "Station",
+            "Name": "Name",
+            "ID": "ID",
+            "Multi_OP1_Name": "B1",
+            "Multi_OP1_ID": "B1 ID",
+            "Multi_OP2_Name": "B2",
+            "Multi_OP2_ID": "B2 ID",
+            "Multi_OP3_Name": "B3",
+            "Multi_OP3_ID": "B3 ID"
         })
-        def color_backup_status(val):
-            if val == 'Available':
-                return 'background-color: #E8F5E9 !important; color: #2E7D32 !important; font-weight: bold !important; text-align: center;'
-            return 'background-color: #FFEBEE !important; color: #C62828 !important; font-weight: bold !important; text-align: center;'
-        styled_display_df = display_df.style.applymap(
-            lambda x: color_backup_status(x) if isinstance(x, str) and x in ['Available', 'Not Available'] else '',
-            subset=['Backup Status']
-        ).set_table_styles([
-            {'selector': 'th', 'props': 'font-size: 0.65rem !important; padding: 3px 4px !important; text-align: center !important;'},
-            {'selector': 'td', 'props': 'font-size: 0.65rem !important; padding: 2px 4px !important; text-align: center !important;'},
-            {'selector': 'td:nth-child(5), td:nth-child(7), td:nth-child(9)', 'props': 'text-align: left !important;'}
-        ])
+        
+        # Final safety: remove any trailing .0 from backup IDs
+        for col in ['B1 ID', 'B2 ID', 'B3 ID']:
+            display_df[col] = display_df[col].str.replace(r'\.0+$', '', regex=True)
+        
+        # Select and order columns exactly as requested
+        columns_order = ['Area', 'Station', 'Name', 'ID', 'B1', 'B1 ID', 'B2', 'B2 ID', 'B3', 'B3 ID']
+        display_df = display_df[columns_order]
+        
+        # Clean display: empty cells appear blank
+        display_df = display_df.fillna('')
+        
+        styled_display_df = display_df.style \
+            .set_table_styles([
+                {'selector': 'th', 'props': 'font-size: 0.65rem !important; padding: 3px 4px !important; text-align: center !important;'},
+                {'selector': 'td', 'props': 'font-size: 0.65rem !important; padding: 2px 4px !important; text-align: center !important;'},
+                {'selector': 'td:nth-child(3), td:nth-child(5), td:nth-child(7), td:nth-child(9)', 'props': 'text-align: left !important;'}  # Name + B1/B2/B3 names left-aligned
+            ])
+        
         st.dataframe(styled_display_df, use_container_width=True, hide_index=True, height=min(400, 40 + (absent_count * 25)))
-        backup_available = len(display_df[display_df['Backup Status'] == 'Available'])
-        backup_not_available = len(display_df[display_df['Backup Status'] == 'Not Available'])
+        
+        # Backup summary
+        backup_available = len(absent_df[
+            (absent_df['Multi_OP1_Name'].notna() & absent_df['Multi_OP1_Name'].str.strip() != '') |
+            (absent_df['Multi_OP2_Name'].notna() & absent_df['Multi_OP2_Name'].str.strip() != '') |
+            (absent_df['Multi_OP3_Name'].notna() & absent_df['Multi_OP3_Name'].str.strip() != '')
+        ])
+        backup_not_available = absent_count - backup_available
+        
         st.markdown(f"""
         <div style='font-size:0.7rem; margin-top:5px;'>
             <b>Backup Summary:</b>
-            <span style='color:#2E7D32;'>{backup_available} with backup available</span> •
+            <span style='color:#2E7D32;'>{backup_available} with backup</span> •
             <span style='color:#C62828;'>{backup_not_available} without backup</span>
         </div>
         """, unsafe_allow_html=True)
         st.markdown("""
         <div style='font-size:0.65rem; color:#666; margin-top:3px;'>
-            <b>Backup Operators:</b> B1 = Primary backup, B2 = Secondary backup, B3 = Tertiary backup
+            <b>Backup Operators:</b> B1 = Primary, B2 = Secondary, B3 = Tertiary
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -387,4 +413,4 @@ with right_col:
         st.markdown("<div style='text-align:center;padding:0.5rem;background-color:#E8F5E9;border-radius:4px;font-size:0.8rem;'>✅ Perfect Attendance Today</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown("<div style='text-align:center;font-size:0.7rem;color:#666;margin-top:0.5rem;'>OP Dashboard • Complete backup details shown</div>", unsafe_allow_html=True)
+st.markdown("<div style='text-align:center;font-size:0.7rem;color:#666;margin-top:0.5rem;'>OP Dashboard • Full backup details shown</div>", unsafe_allow_html=True)

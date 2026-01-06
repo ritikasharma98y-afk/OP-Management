@@ -4,7 +4,7 @@ import sys
 
 # ==================== CONFIGURATION ====================
 CURRENT_CSV = "current_employees.csv"          # Your enhanced CSV with multi-skills
-ABSENT_EXCEL = "absentReport 2025-12-31.xlsx"  # Absent report
+ABSENT_EXCEL = "absentReport 2026-01-05.xlsx"  # Absent report
 OUTPUT_CSV = "actual_absent_manpower.csv"      # Output with full details
 # =====================================================
 
