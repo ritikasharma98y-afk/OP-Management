@@ -177,7 +177,7 @@ for stage in stages:
             absent_without_backup += 1
 
     present_pct = round((present_in_stage / total_in_stage) * 100) if total_in_stage > 0 else 0
-
+ 
     stage_data.append({
         'Stage': stage,
         'P': present_in_stage,
@@ -199,7 +199,7 @@ attrition_df = pd.DataFrame(attrition_data)
 
 # Header
 st.markdown("<h1>👷 OP Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<div class='date-header'>📅 January 06, 2026 | CG • Offline • Assy • Testing • Packout</div>", unsafe_allow_html=True)
+st.markdown("<div class='date-header'>📅 January 07, 2026 | CG • Offline • Assy • Testing • Packout</div>", unsafe_allow_html=True)
 
 left_col, right_col = st.columns([1, 3], gap="small")
 
