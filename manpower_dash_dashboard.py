@@ -190,10 +190,10 @@ stage_df = pd.DataFrame(stage_data)
 
 # Attrition
 attrition_data = [
-    {'Month': 'Sep', 'Total Required MP': 215, 'Present MP': 211, 'Attrition': 10, 'Attrition %': 5.0},
     {'Month': 'Oct', 'Total Required MP': 215, 'Present MP': 227, 'Attrition': 9, 'Attrition %': 4.0},
     {'Month': 'Nov', 'Total Required MP': 215, 'Present MP': 214, 'Attrition': 12, 'Attrition %': 6.0},
-    {'Month': 'Dec', 'Total Required MP': 215, 'Present MP': 200, 'Attrition': 12, 'Attrition %': 6.0},
+    {'Month': 'Dec', 'Total Required MP': 215, 'Present MP': 200, 'Attrition': 14, 'Attrition %': 7.0},
+    {'Month': 'Jan', 'Total Required MP': 215, 'Present MP': 202, 'Attrition': 7, 'Attrition %': 3.0}
 ]
 attrition_df = pd.DataFrame(attrition_data)
 
@@ -317,7 +317,7 @@ with right_col:
     attr_col1, attr_col2 = st.columns([2, 1], gap="small")
     with attr_col1:
         st.markdown("### 📈 Attrition Trend")
-        month_order = ['Sep', 'Oct', 'Nov', 'Dec']
+        month_order = ['Oct', 'Nov', 'Dec', 'Jan']
         line_chart = alt.Chart(attrition_df).mark_line(color='#E53935', strokeWidth=2).encode(
             x=alt.X('Month:N', title=None, sort=month_order, axis=alt.Axis(labelFontSize=9)),
             y=alt.Y('Attrition %:Q', title=None, axis=alt.Axis(labelFontSize=8), scale=alt.Scale(domain=[0, 7])),
